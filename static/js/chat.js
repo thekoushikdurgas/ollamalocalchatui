@@ -20,72 +20,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Load previous messages and history
+    // Load previous messages
     loadMessages();
-    loadHistory();
-
-    // Handle tab switching
-    document.querySelectorAll('.tab-btn').forEach(button => {
-        button.addEventListener('click', () => {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            if (button.dataset.tab === 'history') {
-                loadHistory();
-            }
-        });
-    });
-
-    async function loadHistory() {
-        try {
-            const response = await fetch('/history');
-            const history = await response.json();
-            const conversationsList = document.querySelector('.conversations-list');
-            
-            conversationsList.innerHTML = history.map((item, index) => `
-                <div class="history-item">
-                    <p>${item.content.substring(0, 50)}...</p>
-                    <div class="history-actions">
-                        <button class="action-button edit-history" data-id="${index}">
-                            <i data-feather="edit"></i> Edit
-                        </button>
-                        <button class="action-button delete-history" data-id="${index}">
-                            <i data-feather="trash"></i> Delete
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-
-            // Add event listeners for edit and delete
-            document.querySelectorAll('.edit-history').forEach(button => {
-                button.addEventListener('click', async (e) => {
-                    const id = e.currentTarget.dataset.id;
-                    const newContent = prompt('Edit message:', history[id].content);
-                    if (newContent) {
-                        await fetch(`/history/${id}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ content: newContent })
-                        });
-                        loadHistory();
-                    }
-                });
-            });
-
-            document.querySelectorAll('.delete-history').forEach(button => {
-                button.addEventListener('click', async (e) => {
-                    const id = e.currentTarget.dataset.id;
-                    if (confirm('Are you sure you want to delete this message?')) {
-                        await fetch(`/history/${id}`, { method: 'DELETE' });
-                        loadHistory();
-                    }
-                });
-            });
-
-            feather.replace();
-        } catch (error) {
-            console.error('Error loading history:', error);
-        }
-    }
 
     // Auto-resize textarea
     messageInput.addEventListener('input', function() {
@@ -122,42 +58,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
             });
 
+            const data = await response.json();
+
+            // Remove loading indicator
+            loadingIndicator.remove();
+
             if (response.ok) {
-                // Remove loading indicator
-                loadingIndicator.remove();
-                
-                // Create message container for streaming
-                const messageDiv = addMessage('', 'bot', true);
-                const textContent = messageDiv.querySelector('p');
-                let fullResponse = '';
-                
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                
-                try {
-                    while (true) {
-                        const {value, done} = await reader.read();
-                        if (done) break;
-                        
-                        const chunk = decoder.decode(value);
-                        const lines = chunk.split('\n');
-                        
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const content = line.slice(6);
-                                fullResponse += content;
-                                textContent.textContent = fullResponse;
-                                scrollToBottom();
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error('Stream error:', error);
-                    textContent.textContent = 'Sorry, I encountered an error while streaming. Please try again.';
-                }
+                addMessage(data.response, 'bot', true);
             } else {
-                // Remove loading indicator
-                loadingIndicator.remove();
                 addMessage('Sorry, I encountered an error. Please try again.', 'bot');
             }
         } catch (error) {

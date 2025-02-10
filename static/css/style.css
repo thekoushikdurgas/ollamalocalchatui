@@ -165,54 +165,6 @@ body {
     border-color: var(--primary-color);
 }
 
-.tab-buttons {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-}
-
-.tab-btn {
-    padding: 8px 16px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s ease;
-}
-
-.tab-btn:hover {
-    background: var(--hover-bg);
-}
-
-.tab-btn.active {
-    background: var(--active-bg);
-    color: var(--primary-color);
-    border-color: var(--primary-color);
-}
-
-.history-item {
-    padding: 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.history-item:hover {
-    background: var(--hover-bg);
-}
-
-.history-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 8px;
-}
-
 .mode-button i {
     width: 16px;
     height: 16px;

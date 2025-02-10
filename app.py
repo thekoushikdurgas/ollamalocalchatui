@@ -1,6 +1,8 @@
+import utils.transport
+import utils.session
 import logging
 import os
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify
 from ollama import AsyncClient
 import hypercorn
 from hypercorn.config import Config
@@ -14,37 +16,6 @@ app.secret_key = "chatbot_secret_key"
 
 # Initialize Ollama client
 ollama_client = AsyncClient()
-
-# Define tool functions
-def add_two_numbers(a: int, b: int) -> int:
-    return a + b
-
-def subtract_two_numbers(a: int, b: int) -> int:
-    return a - b
-
-# Available tools mapping
-available_functions = {
-    'add_two_numbers': add_two_numbers,
-    'subtract_two_numbers': subtract_two_numbers,
-}
-
-# Tool definitions
-add_numbers_tool = add_two_numbers
-subtract_numbers_tool = {
-    'type': 'function',
-    'function': {
-        'name': 'subtract_two_numbers',
-        'description': 'Subtract two numbers',
-        'parameters': {
-            'type': 'object',
-            'required': ['a', 'b'],
-            'properties': {
-                'a': {'type': 'integer', 'description': 'The first number'},
-                'b': {'type': 'integer', 'description': 'The second number'},
-            },
-        },
-    },
-}
 
 @app.route('/')
 def index():
@@ -118,44 +89,12 @@ async def chat():
                     logger.error(f"Structured output error: {str(e)}")
                     raise
             else:
-                from flask import Response, stream_with_context
-                
-                async def generate_stream():
-                    response = await ollama_client.chat(
-                        model='llama2',
-                        messages=session['messages'],
-                        tools=[add_numbers_tool, subtract_numbers_tool],
-                        stream=True
-                    )
-                    
-                    full_response = ""
-                    async for chunk in response:
-                        if chunk.message.tool_calls:
-                            # Handle tool calls
-                            for tool in chunk.message.tool_calls:
-                                if function_to_call := available_functions.get(tool.function.name):
-                                    output = function_to_call(**tool.function.arguments)
-                                    session['messages'].append({
-                                        'role': 'tool',
-                                        'content': str(output),
-                                        'name': tool.function.name
-                                    })
-                            continue
-                            
-                        content = chunk.message.content
-                        full_response += content
-                        yield f"data: {content}\n\n"
-                    
-                    # Save complete response to session
-                    session['messages'].append({
-                        'role': 'assistant',
-                        'content': full_response
-                    })
-                    
-                return Response(
-                    stream_with_context(generate_stream()),
-                    mimetype='text/event-stream'
+                # Regular chat mode
+                response = await ollama_client.chat(
+                    model='llama2',
+                    messages=session['messages']
                 )
+                bot_response = response['message']['content']
 
             # Add bot response to history
             session['messages'].append({
@@ -183,48 +122,8 @@ async def clear_history():
 
 @app.route('/messages', methods=['GET'])
 async def get_messages():
-    try:
-        history = session.get('history', [])
-        return jsonify(history)
-    except Exception as e:
-        logger.error(f"Error fetching messages: {str(e)}")
-        return jsonify([])
-
-@app.route('/history', methods=['GET'])
-async def get_history():
-    try:
-        history = session.get('history', [])
-        return jsonify(history)
-    except Exception as e:
-        logger.error(f"Error fetching history: {str(e)}")
-        return jsonify([])
-
-@app.route('/history/<int:history_id>', methods=['DELETE'])
-async def delete_history(history_id):
-    try:
-        history = session.get('history', [])
-        if 0 <= history_id < len(history):
-            del history[history_id]
-            session['history'] = history
-            return jsonify({'status': 'success'})
-        return jsonify({'error': 'History not found'}), 404
-    except Exception as e:
-        logger.error(f"Error deleting history: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/history/<int:history_id>', methods=['PUT'])
-async def edit_history(history_id):
-    try:
-        data = request.json
-        history = session.get('history', [])
-        if 0 <= history_id < len(history):
-            history[history_id]['content'] = data['content']
-            session['history'] = history
-            return jsonify({'status': 'success'})
-        return jsonify({'error': 'History not found'}), 404
-    except Exception as e:
-        logger.error(f"Error editing history: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+    # For now, return an empty list since we're not storing messages
+    return jsonify([])
 
 @app.errorhandler(404)
 def not_found_error(error):
