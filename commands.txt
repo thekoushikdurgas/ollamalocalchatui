@@ -1,0 +1,9 @@
+python main.py
+
+git init
+git add .
+git commit -m "5-2-2024"
+git remote add origin https://github.com/thekoushikdurgas/ollamalocalchatui.git
+git branch -M main
+git push -u origin main -f
+git pull origin main
